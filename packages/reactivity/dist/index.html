@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <!-- 官方Vue -->
+  <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>  -->
+
+  <!-- mini-Vue -->
+  <script src="./reactivity.global.js"></script>
+  <script>
+    // Vue2的缺点:
+    //  1. 在Vue2的时候使用defineProperty来进行数据劫持，需要对属性进行重新添加getter和setter，性能差
+    //  2. 当新增属性和删除属性时无法监控变化，需要通过$set/$delete来实现
+    //  3. 数组不采用defineProperty来进行劫持（浪费性能，对所有索引进行劫持造成性能浪费），需要对数组单独处理（重写方法）
+    // Vue3采用proxy实现响应式数据变化，从而解决了以上问题
+
+    // effect 代表的是副作用函数，如果此函数依赖数据发生变化了，会重新执行
+    // reactive 将数据变成响应式——proxy
+    const {
+      effect,
+      reactive,
+      shallowReactive,
+      readonly,
+      shallowReadonly
+    } = VueReactivity
+
+    const state = reactive({
+      name: "lcd",
+      age: 18,
+      address: {
+        num: 43000
+      }
+    })
+    console.log(state, state.name, state.address);
+
+    const state2 = shallowReactive({
+      name: "lcd",
+      age: 18,
+      address: {
+        num: 43000
+      }
+    })
+    console.log(state2, state2.name, state2.address); // 此时内部对象address就不再是一个proxy了
+
+    const state3 = readonly({
+      name: "lcd",
+      age: 18,
+      address: {
+        num: 43000
+      }
+    })
+    state3.age = 22 // 警告 age仅可读
+    state3.address.num = 43001 // 警告 num仅可读 
+
+    const state4 = shallowReadonly({
+      name: "lcd",
+      age: 18,
+      address: {
+        num: 43000
+      }
+    })
+    state4.age = 22 // 警告 age仅可读
+    state4.address.num = 43001 // 正常运行，不警告
+
+    // 此effect函数默认会先执行一次，对响应式数据取值（取值的过程中数据依赖于当前的effect）
+    effect(() => app.innerHTML = state.name + '今年' + state.age + '岁')
+    // 稍后name或者age变化会重新执行effect函数
+    setTimeout(() => {
+      state.age = 20
+    }, 1000)
+  </script>
+</body>
+
+</html>
