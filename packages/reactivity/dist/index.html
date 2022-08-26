@@ -27,9 +27,9 @@
     const {
       effect,
       reactive,
-      shallowReactive,
-      readonly,
-      shallowReadonly
+      // shallowReactive,
+      // readonly,
+      // shallowReadonly
     } = VueReactivity
 
     const state = reactive({
@@ -41,34 +41,34 @@
     })
     console.log(state, state.name, state.address);
 
-    const state2 = shallowReactive({
-      name: "lcd",
-      age: 18,
-      address: {
-        num: 43000
-      }
-    })
-    console.log(state2, state2.name, state2.address); // 此时内部对象address就不再是一个proxy了
+    // const state2 = shallowReactive({
+    //   name: "lcd",
+    //   age: 18,
+    //   address: {
+    //     num: 43000
+    //   }
+    // })
+    // console.log(state2, state2.name, state2.address); // 此时内部对象address就不再是一个proxy了
 
-    const state3 = readonly({
-      name: "lcd",
-      age: 18,
-      address: {
-        num: 43000
-      }
-    })
-    state3.age = 22 // 警告 age仅可读
-    state3.address.num = 43001 // 警告 num仅可读 
+    // const state3 = readonly({
+    //   name: "lcd",
+    //   age: 18,
+    //   address: {
+    //     num: 43000
+    //   }
+    // })
+    // state3.age = 22 // 警告 age仅可读
+    // state3.address.num = 43001 // 警告 num仅可读 
 
-    const state4 = shallowReadonly({
-      name: "lcd",
-      age: 18,
-      address: {
-        num: 43000
-      }
-    })
-    state4.age = 22 // 警告 age仅可读
-    state4.address.num = 43001 // 正常运行，不警告
+    // const state4 = shallowReadonly({
+    //   name: "lcd",
+    //   age: 18,
+    //   address: {
+    //     num: 43000
+    //   }
+    // })
+    // state4.age = 22 // 警告 age仅可读
+    // state4.address.num = 43001 // 正常运行，不警告
 
     // 此effect函数默认会先执行一次，对响应式数据取值（取值的过程中数据依赖于当前的effect）
     effect(() => app.innerHTML = state.name + '今年' + state.age + '岁')

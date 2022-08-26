@@ -1,8 +1,9 @@
+import { track, trigger } from "./effect";
+
 export const enum ReactiveFlags {
   IS_REACTIVE = "__v_isReactive",
 }
 
-import { activeEffect } from "./effect";
 export const mutableHandlers = {
   // target:目标对象; key:被获取的属性名; receiver:Proxy 或者继承 Proxy 的对象
   get(target, key, receiver) {
@@ -13,6 +14,9 @@ export const mutableHandlers = {
       return true;
     }
 
+    // 依赖收集
+    track(target, "get", key);
+
     // !! 不能按下面这种方式去返回值（原因见最后注意事项），而是要用Reflect
     // return target[key]
 
@@ -21,11 +25,19 @@ export const mutableHandlers = {
   set(target, key, value, receiver) {
     // 去代理的目标对象上设置值，走set，可以监控用户设置值
 
+    let oldValue = target[key];
+    let result = Reflect.set(target, key, value, receiver);
+    if (oldValue !== value) {
+      // 值变化了
+      // 需要更新
+      trigger(target, "set", key, value, oldValue);
+    }
+
     // !! 不能按下面这种方式去设置值（原因同get），而是要用Reflect
     // target[key] = value;
     // return true;
 
-    return Reflect.set(target, key, value, receiver);
+    return result;
   },
 };
 
