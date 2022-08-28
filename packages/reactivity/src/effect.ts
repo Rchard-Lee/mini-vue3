@@ -18,6 +18,11 @@ class ReactiveEffect {
     try {
       this.parent = activeEffect; // 记录上一级的effect
       activeEffect = this; // 稍后调用fn，fn内部取值操作的时候，就可以获取到这个全局的activeEffect
+
+      // 这里需要在用户函数执行之前将收集的内容全部清空(收集的依赖可能会改变)
+      // 案例参见branch_effect.html
+      cleanupEffect(this);
+
       return this.fn();
     } finally {
       // 还原成之前的effect
@@ -82,8 +87,12 @@ export function trigger(target, type, key, newValue, oldValue) {
   if (!depsMap) return;
 
   // 找属性对应的effect Set
-  const effects = depsMap.get(key);
-  effects &&
+  let effects = depsMap.get(key);
+
+  // 在执行前，先拷贝一份来执行，不要关联引用（详情见注意事项3）
+  if (effects) {
+    effects = new Set(effects);
+    // 这样去循环的时候是去循环新的effects，即使老的effects有变化也不会影响到新的effects
     effects.forEach((effect) => {
       // 如果在执行effect的时候，又要执行自己
       // 那么需要屏蔽掉防止循环递归，最终爆栈
@@ -92,6 +101,16 @@ export function trigger(target, type, key, newValue, oldValue) {
       // 如果当前调用run的effect没有重复
       if (effect !== activeEffect) effect.run();
     });
+  }
+}
+
+function cleanupEffect(effect) {
+  const { deps } = effect;
+  // 解除effect和属性的关联，重新收集依赖
+  for (let i = 0; i < deps.length; i++) {
+    deps[i].delete(effect);
+  }
+  effect.deps.length = 0;
 }
 
 // -------------------------注意事项--------------------
@@ -115,3 +134,20 @@ export function trigger(target, type, key, newValue, oldValue) {
 //   flag ? state.name : state.age
 // })
 // 这种分支控制的时候，比如走age这个分支，那么就需要把name上面的effect删除
+
+// 3. 为什么要拷贝一份effect来执行呢？
+// 因为上面在执行run方法的时候：
+// cleanupEffect(this); -》 解除effects和属性的关联
+// return this.fn(); -》 这里又会重新收集
+// 如果使用的是同一个effects那么就是删了依赖又收集依赖从而死循环
+// 就如：let s = new set([1])
+// s.forEach(item => {s.delete(1);s.add(1)});
+// 这就是一个关联引用，会造成死循环
+
+// 4. 响应式原理总结
+// (1). new Proxy 代理对象属性的set和get
+// (2). effect: 默认数据变化了要更新
+// (3). 先将正在执行的effect作为全局变量，作为属性和effect沟通的一个桥梁
+// (4). 之后渲染取值的时候，在proxy的get方法中进行依赖收集
+// (5). WeakMap(对象: Map(属性: Set(effect)))
+// (6). 稍后用户改变对象属性的时候，会通过属性来查找对应的effect集合，找到effect全部执行
