@@ -4,13 +4,13 @@ class ReactiveEffect {
   public active = true; // 控制effect的激活状态，默认是激活状态
   public deps = []; // 收集依赖了哪些属性
 
-  constructor(public fn) {}
+  constructor(public fn, public scheduler) {}
 
   // run就是执行effect
   run() {
     // 如果是非激活状态，只需要执行函数，不需要进行依赖收集
     if (!this.active) {
-      this.fn();
+      return this.fn();
     }
 
     // 下面进行依赖收集
@@ -29,15 +29,30 @@ class ReactiveEffect {
       activeEffect = this.parent;
     }
   }
+
+  stop() {
+    if (this.active) {
+      // 不进行依赖收集了
+      this.active = false;
+      // 清空收集的依赖，防止属性变化了依旧调用run方法
+      cleanupEffect(this);
+    }
+  }
 }
 
 // effect可以嵌套着写： effect(() => { state.name; effect(() => {state.age})})
-export function effect(fn) {
+export function effect(fn, options: any = {}) {
   // fn可以根据状态变化重新执行
 
-  const _effect = new ReactiveEffect(fn); // 创建响应式的effect
+  const _effect = new ReactiveEffect(fn, options.scheduler); // 创建响应式的effect
   // 默认先执行一次
   _effect.run();
+
+  const runner = _effect.run.bind(_effect); // 绑定this
+  // 将对应的effect挂载到runner上
+  runner.effect = _effect;
+
+  return runner;
 }
 
 // 依赖收集函数： 对象上的某个属性 =》多个effect
@@ -99,7 +114,15 @@ export function trigger(target, type, key, newValue, oldValue) {
       // 比如：effect(()=> { state.name++ })
       // 触发了effect.run()之后又改了值，又会触发更新，从而死循环
       // 如果当前调用run的effect没有重复
-      if (effect !== activeEffect) effect.run();
+      if (effect !== activeEffect) {
+        if (effect.scheduler) {
+          // 如果用户传入了调度函数，则用用户的
+          effect.scheduler();
+        } else {
+          // 否则默认刷新视图
+          effect.run();
+        }
+      }
     });
   }
 }
