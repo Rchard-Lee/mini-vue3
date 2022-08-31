@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <!-- 官方Vue -->
+  <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>  -->
+
+  <!-- mini-Vue -->
+  <script src="./reactivity.global.js"></script>
+  <script>
+    const {
+      effect,
+      reactive,
+      computed
+    } = VueReactivity
+    
+    // Composition API
+    // 1. 在Vue2中采用的是Options API，用户提供的data，props，methods，computed，watch等属性，用户编写复杂业务逻辑会出现反复横跳的问题
+    // 2. Vue2中所有的属性都是通过this访问，this存在指向明确的问题
+    // 3. Vue2中很多未使用方法或属性依旧会被打包，并且所有全局API都在Vue对象上公开。Composition API对tree-shaking更加友好，代码也更加容易压缩
+    // 4. 组件逻辑共享问题，Vue2采用mixins实现组件之间的逻辑共享；但有时会数据来源不明确，命名冲突等问题。Vue3采用Composition API提取公共逻辑非常方便
+
+    // computed特点：缓存
+    // 计算属性中肯定要有一个缓存的标识，如果这个依赖有变化，要重新执行get，如果没有变化就不重新执行get
+    // 这个标识就是：dirty —— 是否是脏的
+    // 计算属性是一个effect，以来的属性变化了，会更新dirty的值
+
+    const state = reactive({firstName: 'Lee', lastName: 'Richard'})
+
+    // 写法一：
+    const fullName = computed({
+      get() {
+        console.log('runner');
+        return state.firstName + ' ' + state.lastName
+      },
+      set(newValue) {
+        console.log(newValue);
+      }
+    })
+    console.log('计算属性只有去取值的时候函数才会执行');
+    console.log(fullName);
+    console.log('如果依赖的值没有发生变化，多次取值不会重新计算【缓存】');
+    console.log(fullName.value);
+    console.log(fullName.value);
+    console.log(fullName.value);
+    fullName.value = 'lcd'
+
+    // 写法二：
+    const fullName2 = computed(() => state.firstName + ' ' + state.lastName)
+    
+    effect(() => {app.innerHTML = fullName2.value})
+    setTimeout(() => {state.firstName = 'Li'}, 1000);
+
+    // 1. firstName要依赖于计算属性的effect
+    // 2. 计算属性收集了外层effect
+    // 3. 依赖的值发生了变化，会触发计算属性的effect重新执行，计算属性重新执行的时候，会触发外层effect执行
+    // 整体结构大致为：effect（computed-effect（firstName、lastName）） 
+    // computed也是可以嵌套的，因为computed也是一个effect：computed-effect（computed-effect（...computed-effect（firstName、lastName）））
+
+  </script>
+</body>
+
+</html>
