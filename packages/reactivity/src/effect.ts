@@ -1,5 +1,5 @@
 export let activeEffect = undefined;
-class ReactiveEffect {
+export class ReactiveEffect {
   public parent = null; // 标记当前effect的父级effect，当出现嵌套的effect的时候有用
   public active = true; // 控制effect的激活状态，默认是激活状态
   public deps = []; // 收集依赖了哪些属性
@@ -80,19 +80,24 @@ export function track(target, type, key) {
     depsMap.set(key, (dep = new Set()));
   }
 
-  let shouldTrack = !dep.has(activeEffect);
-  if (shouldTrack) {
-    // 之前没有相同的effect,所以进行收集
-    dep.add(activeEffect);
-
-    // 让effect记录住对应的dep
-    // 之后清理的时候会用到
-    activeEffect.deps.push(dep);
-  }
+  trackEffects(dep);
 
   // 属性记录了effect，是单向记录
   // 但是最终要双向记录，应该让effect也记录他被哪些属性收集过
   // 这样是为了可以清理，详情见注意事项
+}
+export function trackEffects(dep) {
+  if (activeEffect) {
+    let shouldTrack = !dep.has(activeEffect);
+    if (shouldTrack) {
+      // 之前没有相同的effect,所以进行收集
+      dep.add(activeEffect);
+
+      // 让effect记录住对应的dep
+      // 之后清理的时候会用到
+      activeEffect.deps.push(dep);
+    }
+  }
 }
 
 export function trigger(target, type, key, newValue, oldValue) {
@@ -106,25 +111,29 @@ export function trigger(target, type, key, newValue, oldValue) {
 
   // 在执行前，先拷贝一份来执行，不要关联引用（详情见注意事项3）
   if (effects) {
-    effects = new Set(effects);
-    // 这样去循环的时候是去循环新的effects，即使老的effects有变化也不会影响到新的effects
-    effects.forEach((effect) => {
-      // 如果在执行effect的时候，又要执行自己
-      // 那么需要屏蔽掉防止循环递归，最终爆栈
-      // 比如：effect(()=> { state.name++ })
-      // 触发了effect.run()之后又改了值，又会触发更新，从而死循环
-      // 如果当前调用run的effect没有重复
-      if (effect !== activeEffect) {
-        if (effect.scheduler) {
-          // 如果用户传入了调度函数，则用用户的
-          effect.scheduler();
-        } else {
-          // 否则默认刷新视图
-          effect.run();
-        }
-      }
-    });
+    triggerEffects(effects);
   }
+}
+
+export function triggerEffects(effects) {
+  effects = new Set(effects);
+  // 这样去循环的时候是去循环新的effects，即使老的effects有变化也不会影响到新的effects
+  effects.forEach((effect) => {
+    // 如果在执行effect的时候，又要执行自己
+    // 那么需要屏蔽掉防止循环递归，最终爆栈
+    // 比如：effect(()=> { state.name++ })
+    // 触发了effect.run()之后又改了值，又会触发更新，从而死循环
+    // 如果当前调用run的effect没有重复
+    if (effect !== activeEffect) {
+      if (effect.scheduler) {
+        // 如果用户传入了调度函数，则用用户的
+        effect.scheduler();
+      } else {
+        // 否则默认刷新视图
+        effect.run();
+      }
+    }
+  });
 }
 
 function cleanupEffect(effect) {

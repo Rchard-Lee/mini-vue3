@@ -1,4 +1,6 @@
+import { isObject } from "packages/shared/src";
 import { track, trigger } from "./effect";
+import { reactive } from "./reactive";
 
 export const enum ReactiveFlags {
   IS_REACTIVE = "__v_isReactive",
@@ -20,7 +22,12 @@ export const mutableHandlers = {
     // !! 不能按下面这种方式去返回值（原因见最后注意事项），而是要用Reflect
     // return target[key]
 
-    return Reflect.get(target, key, receiver);
+    // 深度代理实现，取到的时候才会去做代理，这样性能比较好（相较于Vue2中一上来就递归进行监控）
+    let res = Reflect.get(target, key, receiver);
+    if (isObject(res)) {
+      return reactive(res);
+    }
+    return res;
   },
   set(target, key, value, receiver) {
     // 去代理的目标对象上设置值，走set，可以监控用户设置值
