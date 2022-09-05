@@ -25,7 +25,6 @@ class ComputedRefImpl {
   get value() {
     // 做依赖收集
     trackEffects(this.dep);
-    console.log(this.dep);
 
     if (this._dirty) {
       // 如果值是脏的
