@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <!-- 官方Vue -->
+  <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>  -->
+
+  <!-- mini-Vue -->
+  <script src="./reactivity.global.js"></script>
+  <script>
+    const { ref, effect, reactive, toRefs, proxyRefs } = VueReactivity
+    // 如果ref(对象)的话，会变成一个proxy
+    // const school = ref({name: 'xx', age: 18})
+    // console.log(school);
+    // effect(() => {
+    //   app.innerHTML = `${school.value.name}今年成立${school.value.age}年`
+    // })
+    // setTimeout(() => {
+    //   school.value.age = 55
+    // }, 1000)
+
+
+    // const man = reactive({name: 'xx', age: 18})
+    // 解构后丧失响应式特点了
+    // let { name, age } = man
+
+    // 当从组合式函数中返回响应式对象时，toRefs 相当有用。使用它，消费者组件可以解构/展开返回的对象而不会失去响应性：
+    // let { name, age } = toRefs(man)
+    // effect(() => {
+    //   app.innerHTML = `${name.value}今年${age.value}岁`
+    // })
+    // setTimeout(() => {
+    //   age.value = 55
+    // }, 1000)
+
+
+    // 后续在模板中取值的时候都会自动的去掉ref，比如：
+    let color = ref('red')
+    let width = ref('100px')
+
+    let box = proxyRefs({color, width, height: '100px'})
+
+    // 在模板里面使用的时候不需要 + .value 
+    effect(() => {
+      app.innerHTML = box.color + box.width + box.height
+    })
+  </script>
+</body>
+
+</html>
